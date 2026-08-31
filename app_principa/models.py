@@ -20,9 +20,16 @@ class Producto(models.Model):
     ]
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
-    precio = models.DecimalField(max_digits=8, decimal_places=2)
     imagen = models.CharField(max_length=200, blank=True, help_text="Nombre del archivo de imagen, ej: pizza_muzzarella.jpg")
     categoria = models.CharField(max_length=20, choices=CATEGORIAS)
+
+    precio_costo = models.DecimalField(max_digits=8, decimal_places=2, default=0, help_text="Lo que te cuesta a vos hacer el producto")
+    porcentaje_ganancia = models.DecimalField(max_digits=5, decimal_places=2, default=40, help_text="Ej: 40 significa 40% de ganancia")
+    precio = models.DecimalField(max_digits=8, decimal_places=2, editable=False, help_text="Se calcula solo, no lo edites a mano")
+
+    def save(self, *args, **kwargs):
+        self.precio = self.precio_costo + (self.precio_costo * self.porcentaje_ganancia / 100)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre
@@ -41,7 +48,5 @@ class DetallePedido(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     cantidad = models.IntegerField(default=1)
 
-
     def __str__(self):
         return f"{self.cantidad} x {self.producto.nombre}"
-# Create your models here.
