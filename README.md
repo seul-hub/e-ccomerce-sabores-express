@@ -58,6 +58,4 @@ El proyecto está desarrollado utilizando las siguientes tecnologías y herramie
 * **Repositorio:** Organizado mediante diferentes ramas (`branches`) para el desarrollo modular.
 * **Documentación técnica:** Diagramas de Base de Datos (BD), bocetos en Figma y presentación oficial del proyecto.
 
----
 
-📅 **Fecha de entrega:** 
