@@ -1,0 +1,180 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo }} - Sabores Express</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+
+    <header class="topbar">
+        <a class="logo" href="{% url 'seleccion' %}">
+    <img src="{% static 'logo.png' %}" alt="Sabores Express">
+</a>
+        <nav class="topbar-links">
+            <a href="{% url 'seleccion' %}">Inicio</a>
+            <a href="{% url 'login' %}">Iniciar sesión</a>
+        </nav>
+    </header>
+
+    <section class="banner">
+        <p>🛵 Entrega a domicilio</p>
+    </section>
+
+    <main class="contenedor">
+
+        <div class="categorias categorias-chicas">
+            <a class="categoria {% if categoria_actual == 'pizza' %}activa{% endif %}" href="{% url 'productos' 'pizza' %}">Pizzas</a>
+            <a class="categoria {% if categoria_actual == 'empanada' %}activa{% endif %}" href="{% url 'productos' 'empanada' %}">Empanadas</a>
+            <a class="categoria {% if categoria_actual == 'factura' %}activa{% endif %}" href="{% url 'productos' 'factura' %}">Facturas</a>
+            <a class="categoria {% if categoria_actual == 'bebida' %}activa{% endif %}" href="{% url 'productos' 'bebida' %}">Bebidas</a>
+            <a class="categoria {% if categoria_actual == 'combinado' %}activa{% endif %}" href="{% url 'productos' 'combinado' %}">Promos</a>
+        </div>
+
+        <h1 class="titulo-seccion">{{ titulo }}</h1>
+
+        <div class="layout-tienda">
+
+            <section class="grilla-productos">
+                {% for p in productos %}
+                <article class="producto" data-id="{{ p.id }}">
+                    {% if p.imagen %}
+                    <img class="producto-imagen" src="{{ p.imagen }}" alt="{{ p.nombre }}">
+                    {% endif %}
+                    <div class="producto-detalles">
+                        <h3 class="producto-nombre">{{ p.nombre }}</h3>
+                        <p class="producto-descripcion">{{ p.descripcion }}</p>
+                        <p class="producto-precio">${{ p.precio }}</p>
+                        <button class="producto-agregar" type="button">Agregar</button>
+                    </div>
+                </article>
+                {% empty %}
+                <p class="vacio">Todavía no hay productos en esta categoría.</p>
+                {% endfor %}
+            </section>
+
+            <aside class="carrito">
+                <h2 class="carrito-titulo">CARRITO</h2>
+
+                <table class="carrito-tabla">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cant.</th>
+                            <th>Precio</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="carrito-lista"></tbody>
+                </table>
+
+                <p id="carrito-vacio" class="carrito-vacio">Todavía no elegiste nada.</p>
+
+                <div class="carrito-total">
+                    <span>TOTAL</span>
+                    <span id="carrito-total">$0</span>
+                </div>
+
+                <p id="carrito-mensaje" class="carrito-mensaje"></p>
+                <button id="btn-comprar" class="btn-comprar" type="button">COMPRAR</button>
+            </aside>
+
+        </div>
+
+    </main>
+
+    <footer class="footer">
+        <p>Dirección: Malpa 100, Banfield</p>
+        <p>Teléfono: 11-1234-5678</p>
+        <p>Correo: info@mitsito.com</p>
+    </footer>
+
+    <script>
+        const CSRF = "{{ csrf_token }}";
+        const URL_ESTADO = "{% url 'carrito_estado' %}";
+        const URL_AGREGAR = "{% url 'carrito_agregar' %}";
+        const URL_QUITAR = "{% url 'carrito_quitar' %}";
+        const URL_COMPRAR = "{% url 'carrito_comprar' %}";
+
+        const lista = document.getElementById("carrito-lista");
+        const vacio = document.getElementById("carrito-vacio");
+        const totalEl = document.getElementById("carrito-total");
+        const mensaje = document.getElementById("carrito-mensaje");
+
+        function formatear(numero) {
+            return "$" + Number(numero).toLocaleString("es-AR");
+        }
+
+        function enviar(url, datos) {
+            return fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": CSRF
+                },
+                body: JSON.stringify(datos)
+            }).then(respuesta => respuesta.json());
+        }
+
+        function dibujar(estado) {
+            lista.innerHTML = "";
+
+            estado.items.forEach(item => {
+                const fila = document.createElement("tr");
+
+                [item.nombre, item.cantidad, formatear(item.subtotal)].forEach(texto => {
+                    const celda = document.createElement("td");
+                    celda.textContent = texto;
+                    fila.appendChild(celda);
+                });
+
+                const celdaQuitar = document.createElement("td");
+                const botonQuitar = document.createElement("button");
+                botonQuitar.type = "button";
+                botonQuitar.className = "btn-quitar";
+                botonQuitar.textContent = "X";
+                botonQuitar.addEventListener("click", () => {
+                    enviar(URL_QUITAR, { id: item.id }).then(dibujar);
+                });
+                celdaQuitar.appendChild(botonQuitar);
+                fila.appendChild(celdaQuitar);
+
+                lista.appendChild(fila);
+            });
+
+            vacio.style.display = estado.items.length ? "none" : "block";
+            totalEl.textContent = formatear(estado.total);
+        }
+
+        function cargarEstado() {
+            fetch(URL_ESTADO)
+                .then(respuesta => respuesta.json())
+                .then(dibujar);
+        }
+
+        document.querySelectorAll(".producto").forEach(tarjeta => {
+            tarjeta.addEventListener("click", () => {
+                mensaje.textContent = "";
+                enviar(URL_AGREGAR, { id: tarjeta.dataset.id }).then(dibujar);
+            });
+        });
+
+        document.getElementById("btn-comprar").addEventListener("click", () => {
+            mensaje.textContent = "";
+            enviar(URL_COMPRAR, {}).then(resultado => {
+                if (resultado.ok) {
+                    mensaje.textContent = "¡Pedido #" + resultado.pedido + " confirmado!";
+                    cargarEstado();
+                } else {
+                    mensaje.textContent = resultado.error;
+                }
+            });
+        });
+
+        cargarEstado();
+    </script>
+
+</body>
+</html>

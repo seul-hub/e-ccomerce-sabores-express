@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sabores Express</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+
+    <header class="topbar">
+      <a class="logo" href="{% url 'seleccion' %}">
+    <img src="{% static 'logo.png' %}" alt="Sabores Express">
+</a>
+        <nav class="topbar-links">
+            <a href="#contacto">Contacto</a>
+            <a href="{% url 'login' %}">Iniciar sesión</a>
+        </nav>
+    </header>
+
+    <section class="banner">
+        <p>🛵 Entrega a domicilio</p>
+    </section>
+
+    <main class="contenedor">
+        <h1 class="titulo-seccion">¿Qué se te antoja hoy?</h1>
+
+        <div class="categorias">
+            <a class="categoria" href="{% url 'productos' 'pizza' %}">🍕 Pizzas</a>
+            <a class="categoria" href="{% url 'productos' 'empanada' %}">🥟 Empanadas</a>
+            <a class="categoria" href="{% url 'productos' 'factura' %}">🥐 Facturas</a>
+            <a class="categoria" href="{% url 'productos' 'bebida' %}">🥤 Bebidas</a>
+            <a class="categoria" href="{% url 'productos' 'combinado' %}">⭐ Promos</a>
+        </div>
+    </main>
+
+    <footer id="contacto" class="footer">
+        <p>Dirección: Malpa 100, Banfield</p>
+        <p>Teléfono: 11-1234-5678</p>
+        <p>Correo: info@mitsito.com</p>
+    </footer>
+
+</body>
+</html>
