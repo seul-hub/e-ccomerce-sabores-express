@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Panel del Gerente</title>
+
+     <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+   
+
+    <style>
+
+        * {
+
+            margin: 0;
+
+            padding: 0;
+
+            box-sizing: border-box;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        }
+
+
+
+        body {
+
+            background-color: #f4f6f9;
+
+            color: #333;
+
+            display: flex;
+
+            height: 100vh;
+
+            overflow: hidden;
+
+        }
+
+
+
+        /* --- MENÚ LATERAL (SIDEBAR) --- */
+
+        .sidebar {
+
+            width: 260px;
+
+            background-color: #0b132b;
+
+            color: #fff;
+
+            display: flex;
+
+            flex-direction: column;
+
+            padding: 20px;
+
+            justify-content: space-between;
+
+        }
+
+
+
+        .logo-section h2 {
+
+            font-size: 22px;
+
+            letter-spacing: 1px;
+
+            margin-bottom: 40px;
+
+            border-bottom: 1px solid #1c2541;
+
+            padding-bottom: 15px;
+
+        }
+
+
+
+        .menu-btn {
+
+            display: block;
+
+            width: 100%;
+
+            padding: 14px;
+
+            margin-bottom: 15px;
+
+            border: none;
+
+            border-radius: 6px;
+
+            font-size: 15px;
+
+            font-weight: 600;
+
+            color: #fff;
+
+            cursor: pointer;
+
+            transition: background 0.3s ease;
+
+            text-align: center;
+
+        }
+
+
+
+        /* Colores del menú suavizados (UI Profesional) */
+
+        .btn-financiero {
+
+            background-color: #2a9d8f;
+
+        }
+
+        .btn-financiero:hover {
+
+            background-color: #21867a;
+
+        }
+
+
+
+        .btn-stock {
+
+            background-color: #e63946;
+
+        }
+
+        .btn-stock:hover {
+
+            background-color: #c92a36;
+
+        }
+
+
+
+        .user-profile {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            border-top: 1px solid #1c2541;
+
+            padding-top: 15px;
+
+        }
+
+
+
+        .avatar {
+
+            width: 35px;
+
+            height: 35px;
+
+            background-color: #fff;
+
+            color: #0b132b;
+
+            border-radius: 50%;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-weight: bold;
+
+        }
+
+
+
+        /* --- CONTENIDO PRINCIPAL --- */
+
+        .main-content {
+
+            flex: 1;
+
+            padding: 30px;
+
+            overflow-y: auto;
+
+        }
+
+
+
+        /* Tarjetas de KPIs */
+
+        .kpi-container {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+
+            gap: 20px;
+
+            margin-bottom: 30px;
+
+        }
+
+
+
+        .kpi-card {
+
+            background: #fff;
+
+            padding: 20px;
+
+            border-radius: 8px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+
+            border: 4px solid #4a90e2;
+
+        }
+
+
+
+        .kpi-card h3 {
+
+            font-size: 14px;
+
+            color: #777;
+
+            text-transform: uppercase;
+
+            margin-bottom: 8px;
+
+        }
+
+
+
+        .kpi-card p {
+
+            font-size: 24px;
+
+            font-weight: bold;
+
+            color: #111;
+
+        }
+
+
+
+        /* Secciones de Contenedores Genéricos (Filtros, Tablas) */
+
+        .section-container {
+
+            background: #fff;
+
+            padding: 20px;
+
+            border-radius: 8px;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+
+            margin-bottom: 25px;
+
+        }
+
+
+
+        .section-title {
+
+            font-size: 16px;
+
+            font-weight: 600;
+
+            color: #444;
+
+            margin-bottom: 15px;
+
+            border-left: 3px solid #0b132b;
+
+            padding-left: 8px;
+
+        }
+
+
+
+        /* Filtros */
+
+        .filter-group {
+
+            display: flex;
+
+            gap: 15px;
+
+            flex-wrap: wrap;
+
+        }
+
+
+
+        .filter-input {
+
+            padding: 10px;
+
+            border: 1px solid #ddd;
+
+            border-radius: 4px;
+
+            background-color: #f8f9fa;
+
+            font-size: 14px;
+
+        }
+
+
+
+        /* Tablas */
+
+        .table-responsive {
+
+            overflow-x: auto;
+
+        }
+
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            margin-top: 10px;
+
+            font-size: 14px;
+
+        }
+
+
+
+        th, td {
+
+            padding: 12px 15px;
+
+            text-align: left;
+
+            border-bottom: 1px solid #eee;
+
+        }
+
+
+
+        th {
+
+            background-color: #f8f9fa;
+
+            color: #555;
+
+            font-weight: 600;
+
+        }
+
+
+
+        tr:hover {
+
+            background-color: #fdfdfd;
+
+        }
+
+
+
+        /* Grid de Totales (Módulo de Facturación) */
+
+        .totals-grid {
+
+            display: grid;
+
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+
+            gap: 15px;
+
+            text-align: center;
+
+        }
+
+
+
+        .total-box {
+
+            padding: 15px;
+
+            background: #f8f9fa;
+
+            border-radius: 6px;
+
+        }
+
+
+
+        .total-box span {
+
+            display: block;
+
+            font-size: 12px;
+
+            color: #666;
+
+            margin-bottom: 5px;
+
+        }
+
+
+
+        .total-box strong {
+
+            font-size: 18px;
+
+            color: #111;
+
+        }
+
+
+
+        /* Destacar el Gran Total matemático corregido */
+
+        .total-box.grand-total {
+
+            background-color: #e2eafc;
+
+        }
+
+        .total-box.grand-total strong {
+
+            color: #1d3557;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+    <!-- MENÚ LATERAL -->
+
+    <aside class="sidebar">
+
+        <div class="logo-section">
+
+            <h2>GERENTE</h2>
+
+            <nav>
+                  <!-- Saca las ventas del dia (Fecha, Producto ,Cantidad ,Neto ,IVA ,Público Total) -->
+                <button class="menu-btn btn-financiero">Reporte Financiero descargar pdf</button> 
+
+                <!-- Saca el stock que sobro en el local (nombre del producto y cantidad)-->
+                <button class="menu-btn btn-stock">Auditoría de Stock  descargar pdf</button>
+    
+            </nav>
+
+        </div>
+
+       
+
+       
+
+    </aside>
+
+
+
+    <!-- CONTENIDO PRINCIPAL -->
+
+    <main class="main-content">
+
+
+
+        <!-- TARJETAS DE MÉTRICAS (KPIs) -->
+
+        <section class="kpi-container">
+
+            <div class="kpi-card">
+
+                <h3>Ventas del Día</h3>
+
+                <p id="kpi-dia">$150.700</p>
+
+            </div>
+
+            <div class="kpi-card">
+
+                <h3>Ventas Semanal</h3>
+
+                <p id="kpi-semana">$900.000</p>
+
+            </div>
+
+            <div class="kpi-card">
+
+                <h3>Ventas del Mes</h3>
+
+                <p id="kpi-mes">$3.200.000</p>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- SECCIÓN GRÁFICO -->
+        <div class="grafico-seccion">
+            <div class="grafico-cabecera">
+                <h2>Ventas por día del mes </h2>
+                <span id="label-total-mes" class="grafico-total">Total: $0</span>
+            </div>
+            <div class="grafico-wrapper">
+                <canvas id="ventasChart"></canvas>
+            </div>
+        </div>
+
+
+
+        <!-- SECCIÓN DE FILTROS  cuando se eligue el producto se muestra el listado de fecha a fecha celepcionadaq y se muestra en el listado Listado General de Ventas-->
+
+        <section class="section-container">
+
+            <div class="section-title">Filtro de Búsqueda y Listado</div>
+
+            <div class="filter-group">
+
+                <select class="filter-input">
+
+                    <option>Todos los Productos</option>
+
+                    <option>Pizza Napolitana</option>
+
+                </select>
+
+                <input type="date" class="filter-input" value="2024-10-01">
+
+                <input type="date" class="filter-input" value="2024-10-31">
+
+            </div>
+
+        </section>
+
+
+
+        <!-- TABLA GENERAL DE VENTAS -->
+
+        <section class="section-container">
+
+            <div class="section-title">Listado General de Ventas</div>
+
+            <div class="table-responsive">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Fecha</th>
+
+                            <th>Productos</th>
+
+                            <th>Cantidad</th>
+
+                            <th>Neto</th>
+
+                            <th>IVA (21%)</th>
+
+                            <th>Público</th>
+
+                            <th>Total</th>
+
+                        </tr>
+
+                    </thead>
+
+                   
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- MÓDULO DE FACTURACIÓN (Totales consolidados corregidos) -->
+
+        <section class="section-container">
+
+            <div class="section-title">Módulo de Facturación</div>
+
+            <div class="totals-grid">
+
+                <div class="total-box">
+
+                    <span>Subtotal Neto</span>
+
+                    <strong></strong>
+
+                </div>
+
+                <div class="total-box">
+
+                    <span>IVA</span>
+
+                    <strong> .</strong>
+
+                </div>
+
+                <div class="total-box">
+
+                    <span>Percepciones / Impuestos</span>
+
+                    <strong> . </strong>
+
+                </div>
+
+                 <div class="total-box grand-total">
+
+                    <span>Total Facturado</span>
+
+                    <strong> .</strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+    </main>
+
+ <script>
+
+        // Definimos las ventas diarias en miles (ej: 15 = $15.000)
+        // Puedes cambiar estos valores para que se reflejen automáticamente en las tarjetas de arriba.
+        const ventasDiariasMiles = [15, 20, 18, 25, 22, 30, 45, 40, 38, 42, 45, 50, 48, 55, 60, 58, 65, 70, 75, 80, 78, 85, 82, 90, 88, 95, 100, 92, 85, 75, 88];
+
+        // 1. Calcular las métricas automáticamente a partir del array
+        const ventasTotalesPesos = ventasDiariasMiles.map(val => val * 1000);
+        
+        // Ventas del Mes (Suma total de todo el array)
+        const totalMes = ventasTotalesPesos.reduce((acc, curr) => acc + curr, 0);
+        
+        // Ventas Semanal (Suma de los últimos 7 días del mes)
+        const ultimos7Dias = ventasTotalesPesos.slice(-7);
+        const totalSemana = ultimos7Dias.reduce((acc, curr) => acc + curr, 0);
+        
+        // Ventas del Día (El valor del último día registrado en el array)
+        const totalDia = ventasTotalesPesos[ventasTotalesPesos.length - 1];
+
+        // 2. Inyectar los valores calculados en las tarjetas KPI del HTML
+        document.getElementById('kpi-dia').textContent = `$${totalDia.toLocaleString('es-AR')}`;
+        document.getElementById('kpi-semana').textContent = `$${totalSemana.toLocaleString('es-AR')}`;
+        document.getElementById('kpi-mes').textContent = `$${totalMes.toLocaleString('es-AR')}`;
+        document.getElementById('label-total-mes').textContent = `Total: $${totalMes.toLocaleString('es-AR')}`;
+
+        // 3. Configuración y renderizado del Gráfico con Chart.js
+        const ctx = document.getElementById('ventasChart').getContext('2d');
+        const ventasChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: ventasDiariasMiles.length}, (_, i) => i + 1),
+                datasets: [{
+                    data: ventasDiariasMiles,
+                    backgroundColor: '#e31b23',
+                    borderRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ' Venta: $' + (context.raw * 1000).toLocaleString('es-AR');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            font: { size: 10 },
+                            callback: function(value) { return value + 'k'; }
+                        }
+                    }
+                }
+            }
+        });
+   
+</script>
+</body>
+
+</html> 
