@@ -5,7 +5,14 @@ class Usuario(models.Model):
     nombre = models.CharField(max_length=100)
     usuario = models.CharField(max_length=100, unique=True)
     contrasenia = models.CharField(max_length=100)
-
+    CATEGORIAS = [
+            ('gerente', 'Gerente'),
+            ('cajero', 'Cajero'),
+            ('empleado', 'Empleado'),
+            ('cliente', 'Cliente'),
+            ('repositor','Repositor'),
+        ]
+    categoria = models.CharField(max_length=20, choices=CATEGORIAS).default("Cliente")
     def __str__(self):
         return self.usuario
 
