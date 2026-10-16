@@ -12,7 +12,7 @@ class Usuario(models.Model):
             ('cliente', 'Cliente'),
             ('repositor','Repositor'),
         ]
-    categoria = models.CharField(max_length=20, choices=CATEGORIAS).default("Cliente")
+    categoria = models.CharField(max_length=20, choices=CATEGORIAS, default="Cliente")
     def __str__(self):
         return self.usuario
 
