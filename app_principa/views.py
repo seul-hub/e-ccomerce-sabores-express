@@ -16,6 +16,18 @@ def registro(request):
         return redirect('login')
     return render(request, 'app_principa/registro.html')
 
+def registroDeEmpleado(request):
+    usuarios = Usuario.objects
+    if request.method == 'POST':
+        nombre = request.POST.get('usu-nombre')
+        usuario = request.POST.get('usu-nombre-apellido')
+        categoria = request.POST.get('usu-rol')
+        contrasenia = request.POST.get('usu-contrasena')
+        Usuario.objects.create(nombre=nombre, usuario=usuario, contrasenia=contrasenia, categoria=categoria)
+        return redirect('login')
+    return render(request, 'app_principa/abm_usuario.html',{
+        'usuarios_en_bd' : usuarios
+    })
 
 def controlDEpedido(request):
     return render(request, 'app_principa/controlDEpedido.html')

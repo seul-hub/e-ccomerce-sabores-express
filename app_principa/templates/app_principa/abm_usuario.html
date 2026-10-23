@@ -159,25 +159,20 @@
     </style>
 </head>
 <body>
-
-    
-
     <h1>ABM Usuarios</h1>
 
-    <div class="form-card">
+    <form class="form-card" method="POST">
         <input type="hidden" id="usu-id">
 
         <div class="form-group">
-            <label>Nombre del usuario</label>
-            <input type="text" id="usu-nombre" placeholder="Ej: Catalina">
+            <label>Nombre de usuario</label>
+            <input type="text" id="usu-nombre" placeholder="Ej: Catalina433">
         </div>
 
         <div class="form-group">
-            <label>Apellido</label>
-            <input type="text" id="usu-apellido" placeholder="Ej: Gomez">
+            <label>Nombre y Apellido</label>
+            <input type="text" id="usu-nombre-apellido" placeholder="Ej: Juliana Gomez">
         </div>
-
-       
 
         <div class="form-group">
             <label>Rol</label>
@@ -196,9 +191,9 @@
         </div>
 
 
-        <button class="btn-guardar" onclick="guardarUsuario()">GUARDAR</button>
+        <button type="submit" class="btn-guardar">GUARDAR</button>
         <p id="msg-form-usu"></p>
-    </div>
+    </form>
 
     <!-- Tabla Historial de Usuarios -->
     <div class="tabla-card">
@@ -207,15 +202,17 @@
             <thead>
                 <tr>
                     <th>Nombre usuario</th>
-                    <th>Apellido</th>
+                    <th>Nombre y Apellido</th>
                     <th>Rol</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="tabla-body-usuarios">
+                {% for each usuario%}
                 <tr>
-                    <td colspan="5" id="sin_usuarios">Cargando usuarios..</td>
+                    
                 </tr>
+                {%%}
             </tbody>
         </table>
     </div>
