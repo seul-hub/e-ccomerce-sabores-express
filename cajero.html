@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+     <style>
+        /* Estilos Generales y Reseteo */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Encabezado del Cajero */
+        .cajero-header {
+            background-color: #111827;
+            color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .header-container {
+            max-width: 80rem;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            height: 5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .titulo-cajero {
+            font-weight: 800;
+            font-size: 1.5rem;
+            line-height: 2rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        /* Contenedor Principal */
+        .contenido-principal {
+            flex: 1;
+            max-width: 80rem;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            width: 100%;
+        }
+
+        .contenedor-tarjetas {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .contenedor-tarjetas {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        .tarjeta-resumen {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .tarjeta-titulo {
+            font-size: 0.75rem;
+            line-height: 1rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .tarjeta-valor {
+            font-size: 1.875rem;
+            line-height: 2.25rem;
+            font-weight: 700;
+            color: #111827;
+            margin-top: 0.5rem;
+        }
+
+        /* Sección de Tabla de Pedidos */
+        .seccion-pedidos {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-top: 1.5rem;
+        }
+
+        .seccion-cabecera {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .seccion-titulo {
+            font-weight: 700;
+            color: #111827;
+            font-size: 1rem;
+        }
+
+        .contenedor-tabla {
+            overflow-x: auto;
+        }
+
+        .tabla-pedidos {
+            width: 100%;
+            text-align: left;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .tabla-pedidos th {
+            background-color: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+
+        .tabla-pedidos td {
+            padding: 1rem 1.5rem;
+        }
+
+        .fila-tabla {
+            border-top: 1px solid #f3f4f6;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .fila-tabla:hover {
+            background-color: #f9fafb;
+        }
+
+        .texto-negrita {
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .texto-secundario {
+            color: #4b5563;
+            font-size: 0.75rem;
+        }
+
+        /* Etiquetas de Estado */
+        .estado-pendiente {
+            background-color: #fef3c7;
+            color: #b45309;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .estado-preparacion {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .estado-facturado {
+            background-color: #d1fae5;
+            color: #047857;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        /* Botones de Acción */
+        .grupo-botones {
+            text-align: center;
+        }
+
+        .grupo-botones > * + * {
+            margin-left: 0.5rem;
+        }
+
+        .btn-preparar {
+            background-color: #f59e0b;
+            color: #ffffff;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .btn-preparar:hover {
+            background-color: #d97706;
+        }
+
+        .btn-facturar {
+            background-color: #16a34a;
+            color: #ffffff;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .btn-facturar:hover {
+            background-color: #15803d;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-oculto {
+            display: none !important;
+        }
+
+        .modal-contenido {
+            background-color: #e5e7eb;
+            width: 100%;
+            max-width: 32rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn-cerrar-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background-color: #1f2937;
+            color: #ffffff;
+            height: 2rem;
+            width: 2rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .btn-cerrar-modal:hover {
+            background-color: #000000;
+        }
+
+        .modal-titulo {
+            font-size: 1.5rem;
+            line-height: 2rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .modal-info {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .modal-info p + p {
+            margin-top: 0.25rem;
+        }
+
+        .modal-subtitulo {
+            font-weight: 700;
+            color: #111827;
+            font-size: 1rem;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .tabla-modal {
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        .tabla-modal th {
+            text-align: left;
+            color: #4b5563;
+            border-bottom: 1px solid #d1d5db;
+            padding-bottom: 0.5rem;
+        }
+
+        .tabla-modal td {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .tabla-modal tbody {
+            border-top: 1px solid #d1d5db;
+        }
+
+        .modal-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #9ca3af;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #111827;
+        }
+
+        .btn-confirmar-modal {
+            width: 100%;
+            background-color: #f59e0b;
+            color: #ffffff;
+            font-weight: 700;
+            padding-top: 0.625rem;
+            padding-bottom: 0.625rem;
+            border-radius: 0.75rem;
+            transition: background-color 0.2s ease-in-out;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            margin-top: 0.5rem;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-confirmar-modal:hover {
+            background-color: #d97706;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header del Cajero -->
+    <header class="cajero-header">
+        <div class="header-container">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div>
+                    <h1 class="titulo-cajero">CAJERO</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="contenido-principal">
+        
+        <!-- Tarjetas de Resumen del Día -->
+        <div class="contenedor-tarjetas">
+            <div class="tarjeta-resumen">
+                <span class="tarjeta-titulo">Pedidos recibidos hoy</span>
+                <h3 id="contador-recibidos" class="tarjeta-valor">3</h3>
+            </div>
+            
+            <div class="tarjeta-resumen">
+                <span class="tarjeta-titulo">En preparación</span>
+                <h3 id="contador-preparacion" class="tarjeta-valor">1</h3>
+            </div>
+
+            <div class="tarjeta-resumen">
+                <span class="tarjeta-titulo">Facturado en el turno</span>
+                <h3 id="contador-facturado" class="tarjeta-valor">$ 200.909</h3>
+            </div>
+        </div>
+
+        <!-- Tabla de Gestión de Pedidos en Tiempo Real -->
+        <div class="seccion-pedidos">
+            <div class="seccion-cabecera">
+                <h2 class="seccion-titulo">Pedidos Entrantes y Acciones del Cajero</h2>
+            </div>
+
+            <div class="contenedor-tabla">
+                <table class="tabla-pedidos">
+                    <thead>
+                        <tr>
+                            <th>N° Pedido</th>
+                            <th>Productos / Detalle</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo">
+                        <!-- Pedido 1 cuando toque el boton facturar tiene que desaparecer de la fila y debe aparecer en la seccion del gerente en el Listado General de Ventas-->
+                        <tr class="fila-tabla" data-id="1098" data-total="60000">
+                            <td class="texto-negrita">#1098</td>
+                            <td class="texto-secundario">1x Pizza, 2x Cerveza, 4x Empanadas</td>
+                            <td class="texto-negrita">$ 60.000</td>
+                            <td>
+                                <span class="estado-pendiente">Pendiente</span>
+                            </td>
+                            <td class="grupo-botones">
+                                <button onclick="verDetallePedido('1098','30/10/2024', 'Efectivo', this)" class="btn-preparar">Preparar</button>
+                                <button onclick="facturarPedidoDesdeTabla(this)" class="btn-facturar">Facturar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal Detalle del Pedido en Grande -->
+    <div id="modal-detalle" class="modal-overlay modal-oculto">
+        <div class="modal-contenido">
+            <!-- Botón de Cierre -->
+            <button onclick="cerrarDetalle()" class="btn-cerrar-modal">&times;</button>
+            
+            <h2 id="modal-titulo" class="modal-titulo">Pedido #1098</h2>
+            
+            <div class="modal-info">
+                <p><strong>Fecha:</strong> <span id="modal-fecha">30/10/2024</span></p>
+                <p><strong>Medio de pago:</strong> <span id="modal-pago">Efectivo</span></p>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <h3 class="modal-subtitulo">Detalle de pedido</h3>
+                
+                <table class="tabla-modal">
+                    <thead>
+                        <tr>
+                            <th style="padding-bottom: 0.5rem;">Producto</th>
+                            <th style="padding-bottom: 0.5rem; text-align: center;">Cantidad</th>
+                            <th style="padding-bottom: 0.5rem; text-align: right;">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pizza</td>
+                            <td style="text-align: center;">1</td>
+                            <td style="text-align: right;">10.000 $</td>
+                        </tr>
+                        <tr>
+                            <td>Cerveza</td>
+                            <td style="text-align: center;">2</td>
+                            <td style="text-align: right;">9.000 $</td>
+                        </tr>
+                        <tr>
+                            <td>Empanadas de carne</td>
+                            <td style="text-align: center;">4</td>
+                            <td style="text-align: right;">8.000 $</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="modal-total">
+                    <span>Total</span>
+                    <span>60.000 $</span>
+                </div>
+            </div>
+            
+            <button onclick="marcarEnPreparacionDesdeModal()" class="btn-confirmar-modal">
+                Confirmar y Pasar a En Preparación
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts de Funcionalidad Dinámica -->
+    <script>
+        let filaSeleccionadaActual = null;
+
+        function verDetallePedido(nro, fecha, pago, button) {
+            filaSeleccionadaActual = button.closest('tr');
+            document.getElementById('modal-titulo').textContent = `Pedido #${nro}`;
+          
+            document.getElementById('modal-fecha').textContent = fecha;
+            document.getElementById('modal-pago').textContent = pago;
+            document.getElementById('modal-detalle').classList.remove('modal-oculto');
+        }
+
+        function cerrarDetalle() {
+            document.getElementById('modal-detalle').classList.add('modal-oculto');
+            filaSeleccionadaActual = null;
+        }
+
+        function marcarEnPreparacionDesdeModal() {
+            if (filaSeleccionadaActual) {
+                const estadoCell = filaSeleccionadaActual.querySelector('td:nth-child(4) span');
+                // Si el pedido estaba pendiente, descontamos 1 de recibidos y sumamos 1 a preparación
+                if (estadoCell.classList.contains('estado-pendiente')) {
+                    estadoCell.className = 'estado-preparacion';
+                    estadoCell.textContent = 'En preparación';
+
+                    let recibidos = parseInt(document.getElementById('contador-recibidos').textContent) || 0;
+                    let preparacion = parseInt(document.getElementById('contador-preparacion').textContent) || 0;
+
+                    if (recibidos > 0) document.getElementById('contador-recibidos').textContent = recibidos - 1;
+                    document.getElementById('contador-preparacion').textContent = preparacion + 1;
+                }
+            }
+            alert("¡Pedido cambiado al estado: En Preparación!");
+            cerrarDetalle();
+        }
+
+        function facturarPedidoDesdeTabla(button) {
+            const row = button.closest('tr');
+            const estadoCell = row.querySelector('td:nth-child(4) span');
+            const totalPedido = parseFloat(row.getAttribute('data-total')) || 0;
+
+            let recibidos = parseInt(document.getElementById('contador-recibidos').textContent) || 0;
+            let preparacion = parseInt(document.getElementById('contador-preparacion').textContent) || 0;
+
+            // Restar según de dónde venga el estado anterior
+            if (estadoCell.classList.contains('estado-pendiente')) {
+                if (recibidos > 0) document.getElementById('contador-recibidos').textContent = recibidos - 1;
+            } else if (estadoCell.classList.contains('estado-preparacion')) {
+                if (preparacion > 0) document.getElementById('contador-preparacion').textContent = preparacion - 1;
+            }
+
+            // Cambiar estado a Facturado
+            estadoCell.className = 'estado-facturado';
+            estadoCell.textContent = 'Facturado';
+
+            // Sumar al facturado del turno
+            const contadorFacturadoEl = document.getElementById('contador-facturado');
+            // Extraer número actual removiendo "$" y puntos
+            let textoActual = contadorFacturadoEl.textContent.replace('$', '').replace(/\./g, '').trim();
+            let montoActual = parseFloat(textoActual) || 0;
+            let nuevoMonto = montoActual + totalPedido;
+
+            // Formatear de nuevo con puntos de miles
+            contadorFacturadoEl.textContent = `$ ${nuevoMonto.toLocaleString('es-AR')}`;
+
+            alert("¡Factura emitida con éxito y monto sumado al turno!");
+        }
+    </script>
+</body>
+</html>
