@@ -86,15 +86,27 @@ class Pedido(models.Model):
         ('tarjeta', 'Tarjeta'),
         ('mercadopago', 'Mercado Pago'),
     ]
+    ESTADOS = [
+        ('espera', 'Espera...'),
+        ('cancelado', 'Cancelado'),
+        ('preparacion', 'En preparacion'),
+        ('finalizado', 'Finalizado'),
+    ]
 
     usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
     fecha = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='espera')
 
     # Datos de entrega del momento de la compra (no cambian si el cliente edita su perfil después)
     nombre_apellido = models.CharField(max_length=150, blank=True)
     domicilio = models.CharField(max_length=200, blank=True)
     telefono = models.CharField(max_length=30, blank=True)
     forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO, blank=True)
+
+    @property
+    def total(self):
+        """Monto del pedido: suma de sus líneas (precio de venta del momento de la compra)."""
+        return sum((item.total for item in self.items.all()), Decimal('0'))
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.usuario}"
