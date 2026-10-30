@@ -1,321 +1,136 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABM Productos - Kiosco</title>
+{% extends 'app_principa/base_gestion.html' %}
 
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+{% block titulo %}Productos{% endblock %}
 
-        body {
-            background-color: #ffffff;
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333;
-            padding: 20px;
-        }
+{% block contenido %}
 
-        .top-nav {
-            margin-bottom: 10px;
-        }
-        .top-nav a {
-            color: #333;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .top-nav a:hover {
-            text-decoration: underline;
-        }
+<h1>ABM Productos</h1>
 
-        h1 {
-            text-align: center;
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 25px;
-            color: #000;
-        }
+<section class="panel">
+    <h2>{% if editando %}Editar producto{% else %}Nuevo producto{% endif %}</h2>
 
-        /* ── FORMULARIO ── */
-        .form-card {
-            background: #e2e5e9;
-            border-radius: 12px;
-            padding: 28px 32px;
-            max-width: 850px;
-            margin: 0 auto 35px auto;
-        }
+    <form method="post" class="formulario">
+        {% csrf_token %}
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 16px;
-        }
+        {% if form.non_field_errors %}
+            <div class="aviso error">{{ form.non_field_errors }}</div>
+        {% endif %}
 
-        .form-group label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #222;
-            margin-bottom: 6px;
-        }
+        <div class="grilla-form">
+            {% for campo in form %}
+                <div class="campo {% if campo.name == 'descripcion' %}ancho{% endif %}">
+                    {{ campo.label_tag }}
+                    {{ campo }}
+                    {% for error in campo.errors %}
+                        <small class="error-campo">{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endfor %}
 
-        .form-group input, 
-        .form-group select {
-            background: #ffffff;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            padding: 10px 12px;
-            color: #333;
-            font-size: 0.95rem;
-            outline: none;
-            width: 100%;
-        }
-
-        .form-group input:focus, 
-        .form-group select:focus {
-            border-color: #666;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .form-row .form-group { 
-            flex: 1; 
-            margin-bottom: 0;
-        }
-
-        .btn-guardar {
-            width: 100%;
-            background: #e65c00;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-top: 10px;
-            transition: background 0.2s;
-        }
-        .btn-guardar:hover { 
-            background: #cc5200; 
-        }
-
-        #msg-form {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
-
-        /* ── TABLA ── */
-        .tabla-card {
-            background: #e2e5e9;
-            border-radius: 12px;
-            padding: 24px;
-            max-width: 1150px;
-            margin: 0 auto;
-        }
-        
-        .tabla-card h2 {
-            font-size: 1.1rem;
-            color: #333;
-            text-align: center;
-            margin-bottom: 16px;
-            font-weight: bold;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            padding: 12px 10px;
-            text-align: left;
-            color: #333;
-        }
-
-        th { 
-            font-weight: bold; 
-            border-bottom: 2px solid #ccc; 
-        }
-        
-        td { 
-            border-bottom: 1px solid #d0d5dd; 
-        }
-
-        .acciones { 
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .btn-edit, .btn-del {
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-        .btn-edit { background: #e67e22; color: #fff; }
-        .btn-del  { background: #111; color: #fff; }
-        .btn-edit:hover { background: #d06d19; }
-        .btn-del:hover  { background: #000; }
-    </style>
-</head>
-<body>
-
-   
-    <h1>ABM Productos</h1>
-
-    <div class="form-card">
-        <input type="hidden" id="prod-id">
-
-        <!-- Fila 1: Nombre y URL de imagen -->
-        <div class="form-row">
-            <div class="form-group">
-                <label>Nombre del producto</label>
-                <input type="text" id="prod-nombre" placeholder="Ej: Alfajor Havanna">
+            <div class="campo">
+                <label for="neto-auto">Precio neto (automático)</label>
+                <input type="text" id="neto-auto" readonly>
             </div>
-            <div class="form-group">
-                <label>imagen url</label>
-                <input type="text" id="prod-imagen" placeholder="https://...">
+            <div class="campo">
+                <label for="publico-auto">Precio público (automático)</label>
+                <input type="text" id="publico-auto" readonly>
             </div>
         </div>
 
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Categoria</label>
-                <select id="prod-categoria">
-                    <option value="">Seleccione una categoría</option>
-                    <option value="Pizzas">Pizzas</option>
-                    <option value="Empanadas">Empanadas</option>
-                    <option value="Facturas">Facturas</option>
-                    <option value="Bebidas">Bebidas</option>
-                    <option value="Promos">Promos</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Stock</label>
-                <input type="number" id="prod-stock" placeholder="10" min="0">
-            </div>
+        <div class="acciones-form">
+            <button type="submit" class="btn btn-rojo">Guardar producto</button>
+            {% if editando %}
+                <a class="btn btn-gris" href="{% url 'abm_productos' %}">Cancelar</a>
+            {% endif %}
         </div>
+    </form>
+</section>
 
-        <!-- Fila 3: Precio Neto, IVA, Descuentos -->
-        <div class="form-row">
-            <div class="form-group">
-                <label>Precio Neto</label>
-                <input type="number" id="prod-precio" placeholder="250" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>IVA</label>
-                <input type="number" id="prod-iva" placeholder="21" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label>Descuentos</label>
-                <select id="prod-descuento">
-                    <option value="">Seleccione un descuento</option>
-                    <option value="2">2%</option>
-                    <option value="6">6%</option>
-                    <option value="10">10%</option>
-                    <option value="15">15%</option>
-                </select>
-            </div>
-        </div>
-
-    
-        <div class="form-group">
-            <label>Precio Publico (auto calculado)</label> 
-            <input type="text" id="prec_publico" readonly>
-        </div>
-
-        <!-- Botón Guardar -->
-        <button class="btn-guardar" onclick="guardarProducto()">GUARDAR</button>
-        <p id="msg-form"></p>
-    </div>
-
-    <!-- Tabla Historial de Productos -->
-    <div class="tabla-card">
-        <h2>Historial de productos</h2>
+<section class="panel">
+    <h2>Historial de productos</h2>
+    <div class="tabla-scroll">
         <table>
             <thead>
                 <tr>
                     <th>Producto</th>
-                    <th>Categoria</th>
-                    <th>Precio</th>
+                    <th>Categoría</th>
                     <th>Stock</th>
+                    <th>Costo</th>
+                    <th>Ganancia</th>
+                    <th>Neto</th>
                     <th>IVA</th>
-                    <th>Precio Neto</th>
                     <th>Descuento</th>
-                    <th>Precio publico</th>
+                    <th>Público</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody id="tabla-body">
-               <tr>
-                <td colspan="7" id="sin_productos">Cargando productos..</td>
-               </tr>
+            <tbody>
+                {% for p in productos %}
+                    <tr>
+                        <td>{{ p.nombre }}</td>
+                        <td>{{ p.get_categoria_display }}</td>
+                        <td>{{ p.stock }}</td>
+                        <td>${{ p.precio_costo|floatformat:"2g" }}</td>
+                        <td>{{ p.porcentaje_ganancia|floatformat:"-2" }}%</td>
+                        <td>${{ p.precio_neto|floatformat:"2g" }}</td>
+                        <td>{{ p.iva|floatformat:"-2" }}%</td>
+                        <td>{{ p.descuento }}%</td>
+                        <td>${{ p.precio|floatformat:"2g" }}</td>
+                        <td>
+                            <div class="acciones">
+                                <a class="btn-mini btn-editar" href="?editar={{ p.id }}">Editar</a>
+                                <form method="post" action="{% url 'eliminar_producto' p.id %}" onsubmit="return confirm('¿Eliminar {{ p.nombre|escapejs }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-mini btn-eliminar">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="10" class="vacio">Todavía no hay productos. Cargá el primero con el formulario de arriba.</td>
+                    </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
+</section>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-   
-    function calcularPrecioPublico() {
-        const inputNeto = document.getElementById('prod-precio').value;
-        const inputIva = document.getElementById('prod-iva').value;
-        const selectDescuento = document.getElementById('prod-descuento').value;
-        const inputPublico = document.getElementById('prec_publico');
-
-       
-        if (inputNeto === '' || inputIva === '' || selectDescuento === '') {
-            inputPublico.value = ''; // Se mantiene vacío hasta que se complete todo
-            return;
-        }
-
-        // Convertir a números para hacer la operación
-        const precioNeto = parseFloat(inputNeto) || 0;
-        const porcentajeIva = parseFloat(inputIva) || 0;
-        const porcentajeDescuento = parseFloat(selectDescuento) || 0;
-
-        // Operación matemática automática
-        let valorIva = precioNeto * (porcentajeIva / 100);
-        let subtotalConIva = precioNeto + valorIva;
-
-        let montoDescuento = subtotalConIva * (porcentajeDescuento / 100);
-        let precioPublicoFinal = subtotalConIva - montoDescuento;
-
-        // Mostrar resultado instantáneo
-        inputPublico.value = precioPublicoFinal > 0 ? precioPublicoFinal.toFixed(2) : '';
+    function numero(id) {
+        const campo = document.getElementById(id);
+        return campo ? (parseFloat(campo.value) || 0) : 0;
     }
 
-    
-    document.getElementById('prod-precio').addEventListener('input', calcularPrecioPublico);
-    document.getElementById('prod-iva').addEventListener('input', calcularPrecioPublico);
-    document.getElementById('prod-descuento').addEventListener('change', calcularPrecioPublico);
-
-    // Función de guardado del formulario
-    function guardarProducto() {
-        const nombre = document.getElementById('prod-nombre').value;
-        const precioPublico = document.getElementById('prec_publico').value;
-        const msg = document.getElementById('msg-form');
-
-        if (!nombre || !precioPublico) {
-            msg.style.color = 'red';
-            msg.textContent = 'Por favor complete todos los datos requeridos para generar el precio público.';
-            return;
-        }
-
-        msg.style.color = 'green';
-        msg.textContent = '¡Producto guardado exitosamente con precio público: $' + precioPublico + ' !';
+    function pesos(valor) {
+        return '$' + valor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+
+    function calcularPrecios() {
+        const costo = numero('id_precio_costo');
+        const ganancia = numero('id_porcentaje_ganancia');
+        const iva = numero('id_iva');
+        const descuento = numero('id_descuento');
+
+        const neto = costo * (1 + ganancia / 100);
+        const netoConDescuento = neto * (1 - descuento / 100);
+        const publico = netoConDescuento * (1 + iva / 100);
+
+        document.getElementById('neto-auto').value = pesos(neto);
+        document.getElementById('publico-auto').value = pesos(publico);
+    }
+
+    ['id_precio_costo', 'id_porcentaje_ganancia', 'id_iva', 'id_descuento'].forEach(function (id) {
+        const campo = document.getElementById(id);
+        if (campo) {
+            campo.addEventListener('input', calcularPrecios);
+            campo.addEventListener('change', calcularPrecios);
+        }
+    });
+
+    calcularPrecios();
 </script>
-</body>
-</html>
+{% endblock %}

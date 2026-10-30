@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Gestión{% endblock %} - Sabores Express</title>
+    <link rel="stylesheet" href="{% static 'gestion.css' %}">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div>
+            <img class="sidebar-logo" src="{% static 'logo.png' %}" alt="Sabores Express">
+            <p class="sidebar-rol">{{ request.session.rol }}</p>
+
+            <nav>
+                {% if request.session.rol == 'Gerente' or request.session.rol == 'Administrador' %}
+                    <a class="menu-link {% if request.resolver_match.url_name == 'reportes' %}activo{% endif %}" href="{% url 'reportes' %}">Reportes</a>
+                {% endif %}
+                {% if request.session.rol == 'Gerente' or request.session.rol == 'Administrador' or request.session.rol == 'Repositor' %}
+                    <a class="menu-link {% if request.resolver_match.url_name == 'abm_productos' %}activo{% endif %}" href="{% url 'abm_productos' %}">Productos</a>
+                {% endif %}
+                {% if request.session.rol == 'Gerente' or request.session.rol == 'Administrador' %}
+                    <a class="menu-link {% if request.resolver_match.url_name == 'abm_usuarios' %}activo{% endif %}" href="{% url 'abm_usuarios' %}">Usuarios</a>
+                {% endif %}
+            </nav>
+        </div>
+
+        <div class="sidebar-pie">
+            <a class="menu-link" href="{% url 'seleccion' %}">Ver la tienda</a>
+            <a class="menu-link" href="{% url 'salir' %}">Cerrar sesión</a>
+        </div>
+    </aside>
+
+    <main class="contenido">
+        {% if messages %}
+            {% for mensaje in messages %}
+                <div class="aviso {{ mensaje.tags }}">{{ mensaje }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% block contenido %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

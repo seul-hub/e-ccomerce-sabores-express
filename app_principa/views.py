@@ -1,33 +1,59 @@
+import calendar
 import json
+from datetime import date, timedelta
+from decimal import Decimal
+from functools import wraps
 
+from django.contrib import messages
+from django.db import IntegrityError, transaction
+from django.db.models import F, ProtectedError, Q
 from django.http import JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Usuario, Producto, Pedido, DetallePedido
+from .forms import ProductoForm, UsuarioForm
+from .models import DetallePedido, Pedido, Producto, Usuario
 
+
+# ---------- Roles ----------
+
+# A qué página va cada rol cuando inicia sesión
+RUTA_INICIAL = {
+    'Cliente': 'seleccion',
+    'Gerente': 'reportes',
+    'Administrador': 'reportes',
+    'Repositor': 'abm_productos',
+    'Cajero': 'control-pedido',
+}
+
+
+def solo_roles(*roles):
+    """Deja entrar a la página solo a los roles indicados."""
+    def decorador(vista):
+        @wraps(vista)
+        def envoltura(request, *args, **kwargs):
+            if request.session.get('rol') not in roles:
+                return redirect('login')
+            return vista(request, *args, **kwargs)
+        return envoltura
+    return decorador
+
+
+# ---------- Tienda ----------
 
 def registro(request):
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         usuario = request.POST.get('usuario')
         contrasenia = request.POST.get('password')
-        Usuario.objects.create(nombre=nombre, usuario=usuario, contrasenia=contrasenia)
+        try:
+            Usuario.objects.create(nombre=nombre, usuario=usuario, contrasenia=contrasenia)
+        except IntegrityError:
+            return render(request, 'app_principa/registro.html', {'error': 'Ese nombre de usuario ya existe.'})
         return redirect('login')
     return render(request, 'app_principa/registro.html')
 
-def registroDeEmpleado(request):
-    usuarios = Usuario.objects
-    if request.method == 'POST':
-        nombre = request.POST.get('usu-nombre')
-        usuario = request.POST.get('usu-nombre-apellido')
-        categoria = request.POST.get('usu-rol')
-        contrasenia = request.POST.get('usu-contrasena')
-        Usuario.objects.create(nombre=nombre, usuario=usuario, contrasenia=contrasenia, categoria=categoria)
-        return redirect('login')
-    return render(request, 'app_principa/abm_usuario.html',{
-        'usuarios_en_bd' : usuarios
-    })
 
 def controlDEpedido(request):
     return render(request, 'app_principa/controlDEpedido.html')
@@ -48,11 +74,18 @@ def login_view(request):
         contrasenia = request.POST.get('contrasenia')
         try:
             user = Usuario.objects.get(usuario=usuario, contrasenia=contrasenia)
-            request.session['usuario_id'] = user.id
-            return redirect('seleccion')
         except Usuario.DoesNotExist:
             error = 'Usuario o contraseña incorrectos'
+        else:
+            request.session['usuario_id'] = user.id
+            request.session['rol'] = user.rol
+            return redirect(RUTA_INICIAL.get(user.rol, 'seleccion'))
     return render(request, 'app_principa/login.html', {'error': error})
+
+
+def salir(request):
+    request.session.flush()
+    return redirect('login')
 
 
 def productos(request, categoria):
@@ -68,6 +101,24 @@ def productos(request, categoria):
         'productos': lista,
         'titulo': titulos.get(categoria, 'Productos'),
         'categoria_actual': categoria,
+    })
+
+
+def buscar(request):
+    texto = request.GET.get('q', '').strip()
+    if texto:
+        lista = Producto.objects.filter(
+            Q(nombre__icontains=texto) | Q(descripcion__icontains=texto)
+        )
+        titulo = 'Resultados para "' + texto + '"'
+    else:
+        lista = Producto.objects.all()
+        titulo = 'Todos los productos'
+    return render(request, 'app_principa/productos.html', {
+        'productos': lista,
+        'titulo': titulo,
+        'categoria_actual': '',
+        'texto_busqueda': texto,
     })
 
 
@@ -125,16 +176,157 @@ def carrito_comprar(request):
         return JsonResponse({'ok': False, 'error': 'Tenés que iniciar sesión para comprar.'}, status=401)
 
     carrito = request.session.get('carrito', {})
-    if not carrito:
+    productos_en_carrito = Producto.objects.in_bulk([int(clave) for clave in carrito])
+    items = [
+        (productos_en_carrito[int(clave)], cantidad)
+        for clave, cantidad in carrito.items()
+        if int(clave) in productos_en_carrito
+    ]
+    if not items:
         return JsonResponse({'ok': False, 'error': 'El carrito está vacío.'}, status=400)
 
-    pedido = Pedido.objects.create(usuario=usuario)
-    for producto in Producto.objects.filter(id__in=list(carrito)):
-        DetallePedido.objects.create(
-            pedido=pedido,
-            producto=producto,
-            cantidad=carrito[str(producto.id)],
-        )
+    # Control de stock: no se puede comprar más de lo que hay
+    for producto, cantidad in items:
+        if cantidad > producto.stock:
+            mensaje = 'No hay stock suficiente de ' + producto.nombre + ' (quedan ' + str(producto.stock) + ').'
+            return JsonResponse({'ok': False, 'error': mensaje}, status=400)
+
+    with transaction.atomic():
+        pedido = Pedido.objects.create(usuario=usuario)
+        for producto, cantidad in items:
+            DetallePedido.objects.create(
+                pedido=pedido,
+                producto=producto,
+                cantidad=cantidad,
+                precio_neto=producto.neto_con_descuento,
+                precio_unitario=producto.precio,
+            )
+            Producto.objects.filter(id=producto.id).update(stock=F('stock') - cantidad)
+
     request.session['carrito'] = {}
     return JsonResponse({'ok': True, 'pedido': pedido.id})
-# Create your views here.
+
+
+# ---------- Gestión: reportes ----------
+
+@solo_roles('Gerente', 'Administrador')
+def reportes(request):
+    hoy = timezone.localdate()
+    todas = DetallePedido.objects.select_related('pedido', 'producto')
+
+    def total_de(lineas):
+        return sum((linea.total for linea in lineas), Decimal('0'))
+
+    # Tarjetas: día, semana (últimos 7 días), mes y año
+    ventas_dia = total_de(todas.filter(pedido__fecha__date=hoy))
+    ventas_semana = total_de(todas.filter(pedido__fecha__date__gte=hoy - timedelta(days=6)))
+    lineas_mes = list(todas.filter(pedido__fecha__year=hoy.year, pedido__fecha__month=hoy.month))
+    ventas_mes = total_de(lineas_mes)
+    ventas_anio = total_de(todas.filter(pedido__fecha__year=hoy.year))
+
+    # Gráfico: ventas de cada día del mes
+    dias_del_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+    ventas_por_dia = [0.0] * dias_del_mes
+    for linea in lineas_mes:
+        dia = timezone.localtime(linea.pedido.fecha).day
+        ventas_por_dia[dia - 1] += float(linea.total)
+
+    # Filtros del listado: producto y fechas
+    def leer_fecha(texto, por_defecto):
+        try:
+            return date.fromisoformat(texto)
+        except (TypeError, ValueError):
+            return por_defecto
+
+    desde = leer_fecha(request.GET.get('desde'), hoy.replace(day=1))
+    hasta = leer_fecha(request.GET.get('hasta'), hoy)
+    producto_id = request.GET.get('producto', '')
+
+    filtradas = todas.filter(pedido__fecha__date__gte=desde, pedido__fecha__date__lte=hasta)
+    if producto_id.isdigit():
+        filtradas = filtradas.filter(producto_id=int(producto_id))
+    lineas = list(filtradas.order_by('-pedido__fecha'))
+
+    subtotal_neto = sum((linea.neto_total for linea in lineas), Decimal('0'))
+    total_facturado = sum((linea.total for linea in lineas), Decimal('0'))
+    unidades = sum(linea.cantidad for linea in lineas)
+
+    return render(request, 'app_principa/reportes.html', {
+        'ventas_dia': ventas_dia,
+        'ventas_semana': ventas_semana,
+        'ventas_mes': ventas_mes,
+        'ventas_anio': ventas_anio,
+        'datos_grafico': {'dias': list(range(1, dias_del_mes + 1)), 'ventas': ventas_por_dia},
+        'productos': Producto.objects.order_by('nombre'),
+        'producto_id': producto_id,
+        'desde': desde.isoformat(),
+        'hasta': hasta.isoformat(),
+        'lineas': lineas,
+        'subtotal_neto': subtotal_neto,
+        'iva_total': total_facturado - subtotal_neto,
+        'total_facturado': total_facturado,
+        'unidades': unidades,
+    })
+
+
+# ---------- Gestión: productos ----------
+
+@solo_roles('Gerente', 'Administrador', 'Repositor')
+def abm_productos(request):
+    editar_id = request.GET.get('editar', '')
+    instancia = Producto.objects.filter(id=int(editar_id)).first() if editar_id.isdigit() else None
+    form = ProductoForm(request.POST or None, instance=instancia)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Producto guardado.')
+        return redirect('abm_productos')
+    return render(request, 'app_principa/abm_productos.html', {
+        'form': form,
+        'productos': Producto.objects.order_by('categoria', 'nombre'),
+        'editando': instancia,
+    })
+
+
+@solo_roles('Gerente', 'Administrador', 'Repositor')
+@require_POST
+def eliminar_producto(request, producto_id):
+    producto = get_object_or_404(Producto, id=producto_id)
+    try:
+        producto.delete()
+        messages.success(request, 'Producto eliminado.')
+    except ProtectedError:
+        messages.error(request, 'No se puede eliminar: el producto tiene ventas registradas. Dejale el stock en 0.')
+    return redirect('abm_productos')
+
+
+# ---------- Gestión: usuarios ----------
+
+@solo_roles('Gerente', 'Administrador')
+def abm_usuarios(request):
+    editar_id = request.GET.get('editar', '')
+    instancia = Usuario.objects.filter(id=int(editar_id)).first() if editar_id.isdigit() else None
+    form = UsuarioForm(request.POST or None, instance=instancia)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Usuario guardado.')
+        return redirect('abm_usuarios')
+    return render(request, 'app_principa/abm_usuarios.html', {
+        'form': form,
+        'usuarios': Usuario.objects.order_by('rol', 'usuario'),
+        'editando': instancia,
+    })
+
+
+@solo_roles('Gerente', 'Administrador')
+@require_POST
+def eliminar_usuario(request, usuario_id):
+    if usuario_id == request.session.get('usuario_id'):
+        messages.error(request, 'No podés eliminar tu propio usuario.')
+        return redirect('abm_usuarios')
+    usuario = get_object_or_404(Usuario, id=usuario_id)
+    try:
+        usuario.delete()
+        messages.success(request, 'Usuario eliminado.')
+    except ProtectedError:
+        messages.error(request, 'No se puede eliminar: el usuario tiene pedidos registrados.')
+    return redirect('abm_usuarios')

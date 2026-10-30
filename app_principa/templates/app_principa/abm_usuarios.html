@@ -1,0 +1,78 @@
+{% extends 'app_principa/base_gestion.html' %}
+
+{% block titulo %}Usuarios{% endblock %}
+
+{% block contenido %}
+
+<h1>ABM Usuarios</h1>
+
+<section class="panel">
+    <h2>{% if editando %}Editar usuario{% else %}Nuevo usuario{% endif %}</h2>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="aviso error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="grilla-form">
+            {% for campo in form %}
+                <div class="campo">
+                    {{ campo.label_tag }}
+                    {{ campo }}
+                    {% for error in campo.errors %}
+                        <small class="error-campo">{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="acciones-form">
+            <button type="submit" class="btn btn-rojo">Guardar usuario</button>
+            {% if editando %}
+                <a class="btn btn-gris" href="{% url 'abm_usuarios' %}">Cancelar</a>
+            {% endif %}
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Historial de usuarios</h2>
+    <div class="tabla-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre de usuario</th>
+                    <th>Nombre y apellido</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                    <tr>
+                        <td>{{ u.usuario }}</td>
+                        <td>{{ u.nombre }}</td>
+                        <td>{{ u.rol }}</td>
+                        <td>
+                            <div class="acciones">
+                                <a class="btn-mini btn-editar" href="?editar={{ u.id }}">Editar</a>
+                                <form method="post" action="{% url 'eliminar_usuario' u.id %}" onsubmit="return confirm('¿Eliminar a {{ u.usuario|escapejs }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-mini btn-eliminar">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="vacio">Todavía no hay usuarios.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends 'app_principa/base_gestion.html' %}
+
+{% block titulo %}Reportes{% endblock %}
+
+{% block contenido %}
+
+<div class="barra-titulo">
+    <h1>Reportes de ventas</h1>
+    <button type="button" class="btn btn-oscuro" onclick="window.print()">Imprimir o guardar PDF</button>
+</div>
+
+<section class="kpis">
+    <div class="kpi">
+        <h3>Ventas del día</h3>
+        <p>${{ ventas_dia|floatformat:"2g" }}</p>
+    </div>
+    <div class="kpi">
+        <h3>Ventas de los últimos 7 días</h3>
+        <p>${{ ventas_semana|floatformat:"2g" }}</p>
+    </div>
+    <div class="kpi">
+        <h3>Ventas del mes</h3>
+        <p>${{ ventas_mes|floatformat:"2g" }}</p>
+    </div>
+    <div class="kpi">
+        <h3>Ventas del año</h3>
+        <p>${{ ventas_anio|floatformat:"2g" }}</p>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Ventas por día del mes</h2>
+    <div class="grafico">
+        <canvas id="ventasChart"></canvas>
+    </div>
+</section>
+{{ datos_grafico|json_script:"datos-grafico" }}
+
+<section class="panel">
+    <h2>Filtrar el listado</h2>
+    <form method="get" class="filtros">
+        <select name="producto">
+            <option value="">Todos los productos</option>
+            {% for p in productos %}
+                <option value="{{ p.id }}" {% if p.id|stringformat:"s" == producto_id %}selected{% endif %}>{{ p.nombre }}</option>
+            {% endfor %}
+        </select>
+        <input type="date" name="desde" value="{{ desde }}">
+        <input type="date" name="hasta" value="{{ hasta }}">
+        <button type="submit" class="btn btn-rojo">Filtrar</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Listado general de ventas</h2>
+    <div class="tabla-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Neto</th>
+                    <th>IVA</th>
+                    <th>Público (por unidad)</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in lineas %}
+                    <tr>
+                        <td>{{ l.pedido.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ l.producto.nombre }}</td>
+                        <td>{{ l.cantidad }}</td>
+                        <td>${{ l.neto_total|floatformat:"2g" }}</td>
+                        <td>${{ l.iva_total|floatformat:"2g" }}</td>
+                        <td>${{ l.precio_unitario|floatformat:"2g" }}</td>
+                        <td>${{ l.total|floatformat:"2g" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="vacio">No hay ventas en ese período.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Facturación del período</h2>
+    <div class="totales">
+        <div class="total-box">
+            <span>Subtotal neto</span>
+            <strong>${{ subtotal_neto|floatformat:"2g" }}</strong>
+        </div>
+        <div class="total-box">
+            <span>IVA</span>
+            <strong>${{ iva_total|floatformat:"2g" }}</strong>
+        </div>
+        <div class="total-box destacado">
+            <span>Total facturado</span>
+            <strong>${{ total_facturado|floatformat:"2g" }}</strong>
+        </div>
+        <div class="total-box">
+            <span>Unidades vendidas</span>
+            <strong>{{ unidades }}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Stock actual</h2>
+    <div class="tabla-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                    <tr>
+                        <td>{{ p.nombre }}</td>
+                        <td>{{ p.get_categoria_display }}</td>
+                        <td>{{ p.stock }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="3" class="vacio">Todavía no hay productos cargados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+    const datos = JSON.parse(document.getElementById('datos-grafico').textContent);
+
+    new Chart(document.getElementById('ventasChart'), {
+        type: 'bar',
+        data: {
+            labels: datos.dias,
+            datasets: [{
+                data: datos.ventas,
+                backgroundColor: '#EB2B2B',
+                borderRadius: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (contexto) {
+                            return ' Ventas: $' + Number(contexto.raw).toLocaleString('es-AR');
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (valor) {
+                            return '$' + Number(valor).toLocaleString('es-AR');
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
