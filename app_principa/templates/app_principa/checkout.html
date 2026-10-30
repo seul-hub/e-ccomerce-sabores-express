@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+</head>
+<body style="background:#fff; margin:0;">
+
+    <button id="pagar" type="button">Pagar</button>
+
+    <script>
+        // Simulación del Checkout de Mercado Pago:
+        // avisa a la ventana de la tienda que el pago se hizo y se cierra.
+        document.getElementById("pagar").addEventListener("click", () => {
+            if (window.opener) {
+                window.opener.postMessage({ pago: "ok" }, window.location.origin);
+            }
+            window.close();
+        });
+    </script>
+
+</body>
+</html>

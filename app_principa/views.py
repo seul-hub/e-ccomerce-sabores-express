@@ -47,8 +47,17 @@ def registro(request):
         nombre = request.POST.get('nombre')
         usuario = request.POST.get('usuario')
         contrasenia = request.POST.get('password')
+        # Opcionales: solo se guardan si registro.html tiene esos inputs
+        direccion = (request.POST.get('direccion') or '').strip()
+        telefono = (request.POST.get('telefono') or '').strip()
         try:
-            Usuario.objects.create(nombre=nombre, usuario=usuario, contrasenia=contrasenia)
+            Usuario.objects.create(
+                nombre=nombre,
+                usuario=usuario,
+                contrasenia=contrasenia,
+                direccion=direccion,
+                telefono=telefono,
+            )
         except IntegrityError:
             return render(request, 'app_principa/registro.html', {'error': 'Ese nombre de usuario ya existe.'})
         return redirect('login')
@@ -168,6 +177,22 @@ def carrito_quitar(request):
     return JsonResponse(estado_del_carrito(request))
 
 
+def carrito_datos(request):
+    """Datos registrados del usuario, para rellenar el formulario de pago."""
+    try:
+        usuario = Usuario.objects.get(id=request.session.get('usuario_id'))
+    except Usuario.DoesNotExist:
+        return JsonResponse({'ok': False, 'error': 'Tenés que iniciar sesión para comprar.'}, status=401)
+    return JsonResponse({'ok': True, 'domicilio': usuario.direccion, 'telefono': usuario.telefono})
+
+
+def checkout(request):
+    """Ventana que simula el Checkout de Mercado Pago."""
+    if not request.session.get('usuario_id'):
+        return redirect('login')
+    return render(request, 'app_principa/checkout.html')
+
+
 @require_POST
 def carrito_comprar(request):
     try:
@@ -191,8 +216,26 @@ def carrito_comprar(request):
             mensaje = 'No hay stock suficiente de ' + producto.nombre + ' (quedan ' + str(producto.stock) + ').'
             return JsonResponse({'ok': False, 'error': mensaje}, status=400)
 
+    # Datos de entrega que vienen del formulario emergente
+    try:
+        datos = json.loads(request.body or '{}')
+    except ValueError:
+        datos = {}
+    domicilio = (datos.get('domicilio') or '').strip()
+    telefono = (datos.get('telefono') or '').strip()
+    guardar_domicilio = bool(datos.get('guardar_domicilio'))
+
+    if not (domicilio and telefono):
+        return JsonResponse({'ok': False, 'error': 'Completá el domicilio y el teléfono.'}, status=400)
+
     with transaction.atomic():
-        pedido = Pedido.objects.create(usuario=usuario)
+        pedido = Pedido.objects.create(
+            usuario=usuario,
+            nombre_apellido=usuario.nombre,
+            domicilio=domicilio,
+            telefono=telefono,
+            forma_pago='mercadopago',
+        )
         for producto, cantidad in items:
             DetallePedido.objects.create(
                 pedido=pedido,
@@ -202,6 +245,10 @@ def carrito_comprar(request):
                 precio_unitario=producto.precio,
             )
             Producto.objects.filter(id=producto.id).update(stock=F('stock') - cantidad)
+
+        if guardar_domicilio:
+            usuario.direccion = domicilio
+            usuario.save(update_fields=['direccion'])
 
     request.session['carrito'] = {}
     return JsonResponse({'ok': True, 'pedido': pedido.id})

@@ -17,6 +17,10 @@ class Usuario(models.Model):
     contrasenia = models.CharField(max_length=100)
     rol = models.CharField(max_length=20, choices=ROLES, default='Cliente')
 
+    # Domicilio y teléfono registrados: sirven para rellenar el formulario de pago
+    direccion = models.CharField(max_length=200, blank=True)
+    telefono = models.CharField(max_length=30, blank=True)
+
     def __str__(self):
         return self.usuario
 
@@ -76,8 +80,21 @@ class Producto(models.Model):
 
 
 class Pedido(models.Model):
+    FORMAS_PAGO = [
+        ('efectivo', 'Efectivo'),
+        ('transferencia', 'Transferencia'),
+        ('tarjeta', 'Tarjeta'),
+        ('mercadopago', 'Mercado Pago'),
+    ]
+
     usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
     fecha = models.DateTimeField(auto_now_add=True)
+
+    # Datos de entrega del momento de la compra (no cambian si el cliente edita su perfil después)
+    nombre_apellido = models.CharField(max_length=150, blank=True)
+    domicilio = models.CharField(max_length=200, blank=True)
+    telefono = models.CharField(max_length=30, blank=True)
+    forma_pago = models.CharField(max_length=20, choices=FORMAS_PAGO, blank=True)
 
     def __str__(self):
         return f"Pedido #{self.id} - {self.usuario}"

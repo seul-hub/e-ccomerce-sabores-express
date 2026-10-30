@@ -2,8 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    
-    
+
+
     # Tienda
     path('registro/', views.registro, name='registro'),
     path('login/', views.login_view, name='login'),
@@ -19,7 +19,9 @@ urlpatterns = [
     path('carrito/estado/', views.carrito_estado, name='carrito_estado'),
     path('carrito/agregar/', views.carrito_agregar, name='carrito_agregar'),
     path('carrito/quitar/', views.carrito_quitar, name='carrito_quitar'),
+    path('carrito/datos/', views.carrito_datos, name='carrito_datos'),
     path('carrito/comprar/', views.carrito_comprar, name='carrito_comprar'),
+    path('checkout/', views.checkout, name='checkout'),
 
     # Gestión (personal del local)
     path('gestion/reportes/', views.reportes, name='reportes'),

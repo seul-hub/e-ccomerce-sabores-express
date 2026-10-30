@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ titulo }} - Sabores Express</title>
     <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <link rel="stylesheet" href="{% static 'estilos_modal.css' %}">
 </head>
 <body>
 
@@ -91,12 +92,43 @@
         <p>Correo: info@mitsito.com</p>
     </footer>
 
+    <!-- Formulario emergente de entrega -->
+    <div id="modal-envio" class="modal" hidden>
+        <form id="form-envio" class="modal-caja">
+            <button type="button" id="modal-cerrar" class="modal-x">X</button>
+
+            <label>Domicilio
+                <span class="campo">
+                    <input type="text" name="domicilio" required>
+                    <a href="#" id="usar-domicilio" class="link-sobre-input" hidden
+                       onclick="usarDomicilioGuardado(event)">Usar mi domicilio guardado</a>
+                </span>
+            </label>
+
+            <label class="check">
+                <input type="checkbox" name="guardar_domicilio">
+                Guardar como mi domicilio
+            </label>
+
+            <label>Teléfono
+                <span class="campo">
+                    <input type="tel" name="telefono" required>
+                </span>
+            </label>
+
+            <p id="modal-error" class="carrito-mensaje"></p>
+            <button type="submit" class="btn-comprar">Pagar</button>
+        </form>
+    </div>
+
     <script>
         const CSRF = "{{ csrf_token }}";
         const URL_ESTADO = "{% url 'carrito_estado' %}";
         const URL_AGREGAR = "{% url 'carrito_agregar' %}";
         const URL_QUITAR = "{% url 'carrito_quitar' %}";
         const URL_COMPRAR = "{% url 'carrito_comprar' %}";
+        const URL_DATOS = "{% url 'carrito_datos' %}";
+        const URL_CHECKOUT = "{% url 'checkout' %}";
 
         const lista = document.getElementById("carrito-lista");
         const vacio = document.getElementById("carrito-vacio");
@@ -161,14 +193,100 @@
             });
         });
 
+        // ---------- Formulario emergente + pago simulado ----------
+
+        const modal = document.getElementById("modal-envio");
+        const form = document.getElementById("form-envio");
+        const modalError = document.getElementById("modal-error");
+        const linkDomicilio = document.getElementById("usar-domicilio");
+
+        let domicilioGuardado = "";
+        let datosEnvio = null;      // datos esperando que se confirme el pago
+        let ventanaPago = null;
+        let vigilante = null;
+
+        // Click en el link sobre el input: rellena con el domicilio guardado
+        function usarDomicilioGuardado(evento) {
+            evento.preventDefault();
+            form.domicilio.value = domicilioGuardado;
+        }
+
+        function abrirModal() {
+            modalError.textContent = "";
+            fetch(URL_DATOS)
+                .then(r => r.json().then(d => ({ status: r.status, d })))
+                .then(({ status, d }) => {
+                    if (status === 401) {
+                        mensaje.textContent = d.error;
+                        return;
+                    }
+                    form.domicilio.value = "";
+                    form.telefono.value = d.telefono;
+                    form.guardar_domicilio.checked = false;
+                    domicilioGuardado = d.domicilio;
+                    linkDomicilio.hidden = !domicilioGuardado;
+                    modal.hidden = false;
+                });
+        }
+
         document.getElementById("btn-comprar").addEventListener("click", () => {
             mensaje.textContent = "";
-            enviar(URL_COMPRAR, {}).then(resultado => {
+            abrirModal();
+        });
+
+        document.getElementById("modal-cerrar").addEventListener("click", () => {
+            modal.hidden = true;
+        });
+
+        // Pagar: abre la ventana simulada de Mercado Pago
+        form.addEventListener("submit", evento => {
+            evento.preventDefault();
+            modalError.textContent = "";
+
+            datosEnvio = {
+                domicilio: form.domicilio.value,
+                telefono: form.telefono.value,
+                guardar_domicilio: form.guardar_domicilio.checked
+            };
+
+            // Se abre en el mismo click para que el navegador no la bloquee
+            ventanaPago = window.open(URL_CHECKOUT, "checkout", "width=480,height=600");
+            if (!ventanaPago) {
+                datosEnvio = null;
+                modalError.textContent = "Habilitá las ventanas emergentes para poder pagar.";
+                return;
+            }
+
+            // Si cierran la ventana sin pagar
+            clearInterval(vigilante);
+            vigilante = setInterval(() => {
+                if (ventanaPago.closed) {
+                    clearInterval(vigilante);
+                    setTimeout(() => {
+                        if (datosEnvio) {
+                            datosEnvio = null;
+                            modalError.textContent = "Pago cancelado.";
+                        }
+                    }, 500);
+                }
+            }, 300);
+        });
+
+        // Llega el "Pagar" de la ventana simulada: recién ahora se confirma el pedido
+        window.addEventListener("message", evento => {
+            if (evento.origin !== window.location.origin) return;
+            if (!evento.data || evento.data.pago !== "ok" || !datosEnvio) return;
+
+            const datos = datosEnvio;
+            datosEnvio = null;
+
+            enviar(URL_COMPRAR, datos).then(resultado => {
                 if (resultado.ok) {
+                    modal.hidden = true;
                     mensaje.textContent = "¡Pedido #" + resultado.pedido + " confirmado!";
                     cargarEstado();
                 } else {
-                    mensaje.textContent = resultado.error;
+                    modalError.textContent = resultado.error;
                 }
             });
         });
