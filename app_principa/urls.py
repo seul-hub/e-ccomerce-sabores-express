@@ -2,9 +2,12 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    
+    
     # Tienda
     path('registro/', views.registro, name='registro'),
     path('login/', views.login_view, name='login'),
+    path('', views.login_view),
     path('salir/', views.salir, name='salir'),
     path('control-pedido', views.controlDEpedido, name='control-pedido'),
     path('seleccion', views.seleccion, name='seleccion'),
