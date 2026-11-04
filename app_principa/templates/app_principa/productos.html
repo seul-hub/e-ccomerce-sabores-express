@@ -11,14 +11,21 @@
 <body>
 
     <header class="topbar">
-        <a class="logo" href="{% url 'seleccion' %}">
+      <a class="logo" href="{% url 'seleccion' %}">
     <img src="{% static 'logo.png' %}" alt="Sabores Express">
 </a>
         <nav class="topbar-links">
-            <a href="{% url 'seleccion' %}">Inicio</a>
+            <a href="#contacto">Contacto</a>
+
+            {% if usuario_actual %}
+            <button type="button" onclick="abrirPedidos()">📦 Mis pedidos</button>
+            <button type="button" onclick="abrirPerfil()">👤 {{ usuario_actual.nombre }}</button>
+            {% else %}
             <a href="{% url 'login' %}">Iniciar sesión</a>
+            {% endif %}
         </nav>
     </header>
+
 
     <section class="banner">
         <p>🛵 Entrega a domicilio</p>
@@ -91,6 +98,118 @@
         <p>Teléfono: 11-1234-5678</p>
         <p>Correo: info@mitsito.com</p>
     </footer>
+
+    {% if usuario_actual %}
+    <!-- Ventana emergente: perfil del usuario -->
+    <div id="modal-perfil" class="modal" hidden>
+        <div class="modal-caja modal-caja-perfil">
+            <button type="button" class="modal-x" onclick="cerrarModales()">X</button>
+
+            <div class="perfil-cabecera">
+                <div class="perfil-avatar">{{ usuario_actual.nombre|first|upper }}</div>
+                <h2 class="perfil-nombre">{{ usuario_actual.nombre }}</h2>
+                <p class="perfil-usuario">@{{ usuario_actual.usuario }}</p>
+                <span class="perfil-rol">{{ usuario_actual.rol }}</span>
+            </div>
+
+            <div class="perfil-cuerpo">
+                <div class="perfil-dato">
+                    <span class="perfil-icono">🏠</span>
+                    <div>
+                        <small>Domicilio</small>
+                        {% if usuario_actual.direccion %}
+                        <strong>{{ usuario_actual.direccion }}</strong>
+                        {% else %}
+                        <strong class="perfil-vacio">Sin domicilio guardado</strong>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="perfil-dato">
+                    <span class="perfil-icono">📞</span>
+                    <div>
+                        <small>Teléfono</small>
+                        {% if usuario_actual.telefono %}
+                        <strong>{{ usuario_actual.telefono }}</strong>
+                        {% else %}
+                        <strong class="perfil-vacio">Sin teléfono guardado</strong>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <a class="btn-salir" href="{% url 'salir' %}">Cerrar sesión</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana emergente: Mis pedidos -->
+    <div id="modal-pedidos" class="modal" hidden>
+        <div class="modal-caja modal-caja-ancha">
+            <button type="button" class="modal-x" onclick="cerrarModales()">X</button>
+
+            <h2 class="modal-titulo">📦 Mis pedidos</h2>
+
+            <div class="pedidos-scroll">
+                <table class="tabla-pedidos">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Fecha</th>
+                            <th class="num">Monto</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pedidos_usuario %}
+                        <tr>
+                            <td class="pedido-numero">#{{ p.id }}</td>
+                            <td>{{ p.fecha|date:"d/m/Y H:i" }}</td>
+                            <td class="num">${{ p.total }}</td>
+                            <td><span class="estado-badge estado-{{ p.estado }}">{{ p.get_estado_display }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="pedidos-vacio">Todavía no hiciste pedidos.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modalPedidos = document.getElementById("modal-pedidos");
+        const modalPerfil = document.getElementById("modal-perfil");
+
+        function cerrarModales() {
+            modalPedidos.hidden = true;
+            modalPerfil.hidden = true;
+        }
+
+        function abrirPedidos() {
+            cerrarModales();
+            modalPedidos.hidden = false;
+        }
+
+        function abrirPerfil() {
+            cerrarModales();
+            modalPerfil.hidden = false;
+        }
+
+        // Click en el fondo oscuro (fuera de la caja): cierra la ventana
+        [modalPedidos, modalPerfil].forEach(modal => {
+            modal.addEventListener("click", evento => {
+                if (evento.target === modal) cerrarModales();
+            });
+        });
+
+        // Tecla Esc: cierra la ventana
+        document.addEventListener("keydown", evento => {
+            if (evento.key === "Escape") cerrarModales();
+        });
+    </script>
+    {% endif %}
 
     <!-- Formulario emergente de entrega -->
     <div id="modal-envio" class="modal" hidden>

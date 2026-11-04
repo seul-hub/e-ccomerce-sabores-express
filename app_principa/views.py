@@ -27,6 +27,9 @@ RUTA_INICIAL = {
     'Cajero': 'control-pedido',
 }
 
+# Quiénes pueden usar el panel del cajero
+ROLES_CAJA = ('Cajero', 'Gerente', 'Administrador')
+
 
 def solo_roles(*roles):
     """Deja entrar a la página solo a los roles indicados."""
@@ -62,10 +65,6 @@ def registro(request):
             return render(request, 'app_principa/registro.html', {'error': 'Ese nombre de usuario ya existe.'})
         return redirect('login')
     return render(request, 'app_principa/registro.html')
-
-
-def controlDEpedido(request):
-    return render(request, 'app_principa/controlDEpedido.html')
 
 
 def seleccion(request):
@@ -254,12 +253,111 @@ def carrito_comprar(request):
     return JsonResponse({'ok': True, 'pedido': pedido.id})
 
 
+# ---------- Cajero: control de pedidos ----------
+
+@solo_roles(*ROLES_CAJA)
+def controlDEpedido(request):
+    """Página del cajero. Las filas y los contadores los carga el JS desde cajero_estado."""
+    return render(request, 'app_principa/controlDEpedido.html')
+
+
+def datos_cajero():
+    """Pedidos abiertos (Espera... y En preparacion) y contadores del día."""
+    hoy = timezone.localdate()
+
+    abiertos = (
+        Pedido.objects.filter(estado__in=['espera', 'preparacion'])
+        .select_related('usuario')
+        .prefetch_related('items__producto')
+        .order_by('fecha')
+    )
+    lista = []
+    for pedido in abiertos:
+        lista.append({
+            'id': pedido.id,
+            'fecha': timezone.localtime(pedido.fecha).strftime('%d/%m/%Y %H:%M'),
+            'forma_pago': pedido.get_forma_pago_display() or '-',
+            'cliente': pedido.nombre_apellido or pedido.usuario.nombre,
+            'domicilio': pedido.domicilio or '-',
+            'telefono': pedido.telefono or '-',
+            'estado': pedido.estado,
+            'estado_texto': pedido.get_estado_display(),
+            'total': float(pedido.total),
+            'items': [
+                {
+                    'producto': item.producto.nombre,
+                    'cantidad': item.cantidad,
+                    'subtotal': float(item.total),
+                }
+                for item in pedido.items.all()
+            ],
+        })
+
+    # "Turno" = el día de hoy
+    del_dia = Pedido.objects.filter(fecha__date=hoy)
+    finalizados_hoy = del_dia.filter(estado='finalizado').prefetch_related('items')
+    facturado = sum((pedido.total for pedido in finalizados_hoy), Decimal('0'))
+
+    return {
+        'pedidos': lista,
+        'resumen': {
+            'recibidos': del_dia.count(),
+            'en_preparacion': Pedido.objects.filter(estado='preparacion').count(),
+            'facturado': float(facturado),
+        },
+    }
+
+
+@solo_roles(*ROLES_CAJA)
+def cajero_estado(request):
+    return JsonResponse({'ok': True, **datos_cajero()})
+
+
+def _cambiar_estado(pedido_id, estados_permitidos, nuevo_estado, devolver_stock=False):
+    """Cambia el estado de un pedido validando de qué estado viene."""
+    with transaction.atomic():
+        pedido = get_object_or_404(Pedido.objects.select_for_update(), id=pedido_id)
+        if pedido.estado not in estados_permitidos:
+            mensaje = 'El pedido #' + str(pedido.id) + ' está en "' + pedido.get_estado_display() + '" y no admite esta acción.'
+            return JsonResponse({'ok': False, 'error': mensaje, **datos_cajero()}, status=409)
+
+        if devolver_stock:
+            for item in pedido.items.all():
+                Producto.objects.filter(id=item.producto_id).update(stock=F('stock') + item.cantidad)
+
+        pedido.estado = nuevo_estado
+        pedido.save(update_fields=['estado'])
+    return JsonResponse({'ok': True, **datos_cajero()})
+
+
+@solo_roles(*ROLES_CAJA)
+@require_POST
+def cajero_preparar(request, pedido_id):
+    """Espera... -> En preparacion."""
+    return _cambiar_estado(pedido_id, ['espera'], 'preparacion')
+
+
+@solo_roles(*ROLES_CAJA)
+@require_POST
+def cajero_finalizar(request, pedido_id):
+    """Cualquier estado (menos Cancelado) -> Finalizado."""
+    return _cambiar_estado(pedido_id, ['espera', 'preparacion'], 'finalizado')
+
+
+@solo_roles(*ROLES_CAJA)
+@require_POST
+def cajero_cancelar(request, pedido_id):
+    """Solo desde Espera... -> Cancelado, devolviendo el stock."""
+    return _cambiar_estado(pedido_id, ['espera'], 'cancelado', devolver_stock=True)
+
+
 # ---------- Gestión: reportes ----------
 
 @solo_roles('Gerente', 'Administrador')
 def reportes(request):
     hoy = timezone.localdate()
-    todas = DetallePedido.objects.select_related('pedido', 'producto')
+    # Solo cuentan las ventas finalizadas por el cajero
+    todas = DetallePedido.objects.select_related('pedido', 'producto').filter(pedido__estado='finalizado')
 
     def total_de(lineas):
         return sum((linea.total for linea in lineas), Decimal('0'))
