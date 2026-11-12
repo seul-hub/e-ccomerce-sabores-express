@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db import models
 
+import random
 
 class Usuario(models.Model):
     ROLES = [
@@ -17,6 +18,9 @@ class Usuario(models.Model):
     contrasenia = models.CharField(max_length=100)
     rol = models.CharField(max_length=20, choices=ROLES, default='Cliente')
 
+    # Email para la recuperacion de contraseñas
+    email = models.EmailField(blank=True, unique=True)
+    
     # Domicilio y teléfono registrados: sirven para rellenar el formulario de pago
     direccion = models.CharField(max_length=200, blank=True)
     telefono = models.CharField(max_length=30, blank=True)
