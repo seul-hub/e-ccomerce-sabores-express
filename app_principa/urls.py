@@ -5,6 +5,9 @@ urlpatterns = [
 
 
     # Tienda
+    path('recuperar/', views.recuperar_cuenta, name='recuperarContraseña'),
+    path('recuperar/verificar/', views.recuperar_verificar, name='recuperar_verificar'),
+    path('recuperar/nueva-clave/', views.recuperar_nueva_clave, name='recuperar_nueva_clave'),
     path('registro/', views.registro, name='registro'),
     path('login/', views.login_view, name='login'),
     path('', views.login_view),

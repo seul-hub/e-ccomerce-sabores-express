@@ -5,7 +5,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login</title>
-<!-- by brisa esc --> <style> 
+<!-- by brisa esc --> 
+ <style> 
 
 .panel-imagen {
     overflow: hidden; /* evita que la entrada desde la izquierda cree scroll horizontal */
@@ -136,6 +137,10 @@ body{
 
     <div class="extra">
         <p>¿No tienes cuenta? <a href="{% url 'registro' %}">Registrarse</a></p>
+    </div>
+    <div class="extra">
+        <p>¿Olvidaste tu contraseña? <a href="{% url 'recuperarContraseña' %}">Recuperala</a></p>
+        
     </div>
 </form>
 </div>

@@ -28,7 +28,10 @@ class Usuario(models.Model):
     def __str__(self):
         return self.usuario
 
-
+# class ViejasPasswords(models.Model):
+#     id_usuario = models.ForeignKey(to=Usuario, )
+#     vieja_password = models.CharField(blank= False)
+    
 class Producto(models.Model):
     CATEGORIAS = [
         ('empanada', 'Empanada'),
