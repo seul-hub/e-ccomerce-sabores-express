@@ -50,6 +50,7 @@ def registro(request):
         nombre = request.POST.get('nombre')
         usuario = request.POST.get('usuario')
         contrasenia = request.POST.get('password')
+        email = request.POST.get('email')
         # Opcionales: solo se guardan si registro.html tiene esos inputs
         direccion = (request.POST.get('direccion') or '').strip()
         telefono = (request.POST.get('telefono') or '').strip()
@@ -57,6 +58,7 @@ def registro(request):
             Usuario.objects.create(
                 nombre=nombre,
                 usuario=usuario,
+                email = email,
                 contrasenia=contrasenia,
                 direccion=direccion,
                 telefono=telefono,
