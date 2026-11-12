@@ -7,6 +7,10 @@
     <title>{{ titulo }} - Sabores Express</title>
     <link rel="stylesheet" href="{% static 'styles.css' %}">
     <link rel="stylesheet" href="{% static 'estilos_modal.css' %}">
+    <style>
+        .producto-acciones { display: flex; gap: 6px; margin-top: 8px; }
+        .producto-acciones .producto-agregar { flex: 1; }
+    </style>
 </head>
 <body>
 
@@ -47,7 +51,7 @@
 
             <section class="grilla-productos">
                 {% for p in productos %}
-                <article class="producto" data-id="{{ p.id }}">
+                <article class="producto" data-id="{{ p.id }}" data-stock="{{ p.stock }}">
                     {% if p.imagen %}
                     <img class="producto-imagen" src="{{ p.imagen }}" alt="{{ p.nombre }}">
                     {% endif %}
@@ -55,7 +59,13 @@
                         <h3 class="producto-nombre">{{ p.nombre }}</h3>
                         <p class="producto-descripcion">{{ p.descripcion }}</p>
                         <p class="producto-precio">${{ p.precio }}</p>
-                        <button class="producto-agregar" type="button">Agregar</button>
+                        <hr>
+                        <p><h4>Agregar al carrito:</h4></p>
+                        <div class="producto-acciones">
+                            <button class="producto-agregar" type="button" data-cantidad="1">+1</button>
+                            <button class="producto-agregar" type="button" data-cantidad="6">+6</button>
+                            <button class="producto-agregar" type="button" data-cantidad="12">+12</button>
+                        </div>
                     </div>
                 </article>
                 {% empty %}
@@ -305,10 +315,35 @@
                 .then(dibujar);
         }
 
-        document.querySelectorAll(".producto").forEach(tarjeta => {
-            tarjeta.addEventListener("click", () => {
-                mensaje.textContent = "";
-                enviar(URL_AGREGAR, { id: tarjeta.dataset.id }).then(dibujar);
+        // Agrega "cantidad" unidades de un producto, de a una (el endpoint suma 1 por llamada).
+        // Las llamadas van encadenadas para no pisarse en la sesión.
+        function agregarCantidad(id, cantidad, stock) {
+            mensaje.textContent = "";
+
+            let cadena = fetch(URL_ESTADO).then(r => r.json());
+
+            for (let i = 0; i < cantidad; i++) {
+                cadena = cadena.then(estado => {
+                    const enCarrito = estado.items.find(item => item.id == id)?.cantidad || 0;
+                    if (enCarrito >= stock) {
+                        mensaje.textContent = "No hay más stock de este producto.";
+                        return estado;
+                    }
+                    return enviar(URL_AGREGAR, { id });
+                });
+            }
+
+            return cadena.then(dibujar);
+        }
+
+        document.querySelectorAll(".producto-agregar").forEach(boton => {
+            boton.addEventListener("click", () => {
+                const tarjeta = boton.closest(".producto");
+                agregarCantidad(
+                    tarjeta.dataset.id,
+                    Number(boton.dataset.cantidad),
+                    Number(tarjeta.dataset.stock)
+                );
             });
         });
 

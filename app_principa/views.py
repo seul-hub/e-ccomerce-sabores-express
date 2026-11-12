@@ -15,6 +15,115 @@ from django.views.decorators.http import require_POST
 from .forms import ProductoForm, UsuarioForm
 from .models import DetallePedido, Pedido, Producto, Usuario
 
+import secrets
+from datetime import timedelta, datetime as dt
+from django.core.mail import send_mail
+from django.conf import settings
+
+
+def _limpiar_reset(request):
+    for k in ('reset_usuario_id', 'reset_codigo', 'reset_expira',
+              'reset_intentos', 'reset_verificado'):
+        request.session.pop(k, None)
+
+
+def recuperar_cuenta(request):
+    """Paso 1: usuario + email → genera código y lo envía por mail."""
+    error = None
+    if request.method == 'POST':
+        nombre_usuario = (request.POST.get('usuario') or '').strip()
+        email = (request.POST.get('email') or '').strip()
+        usuario = Usuario.objects.filter(
+            usuario=nombre_usuario, email__iexact=email
+        ).first()
+
+        if usuario:
+            codigo = f"{secrets.randbelow(1000000):06d}"  # 6 dígitos
+            request.session['reset_usuario_id'] = usuario.id
+            request.session['reset_codigo'] = codigo
+            request.session['reset_expira'] = (
+                timezone.now() + timedelta(minutes=10)
+            ).isoformat()
+            request.session['reset_intentos'] = 0
+            request.session['reset_verificado'] = False
+
+            send_mail(
+                'Recuperación de contraseña - Sabores Express',
+                f'Tu código de recuperación es: {codigo}\n\n'
+                f'Válido por 10 minutos. Si no lo pediste, ignorá este mail.',
+                getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@sabores.local'),
+                [usuario.email],
+                fail_silently=False,
+            )
+            return redirect('recuperar_verificar')
+
+        error = 'Usuario o email incorrectos.'
+
+    return render(request, 'app_principa/recuperar_cuenta.html', {'error': error})
+
+
+def recuperar_verificar(request):
+    """Paso 2: ingresar el código recibido por mail."""
+    if not request.session.get('reset_codigo'):
+        return redirect('recuperarContraseña')
+
+    error = None
+    if request.method == 'POST':
+        ingresado = (request.POST.get('codigo') or '').strip()
+        guardado = request.session.get('reset_codigo')
+        expira_iso = request.session.get('reset_expira')
+        intentos = request.session.get('reset_intentos', 0)
+
+        try:
+            expirado = timezone.now() > dt.fromisoformat(expira_iso)
+        except (TypeError, ValueError):
+            expirado = True
+
+        if expirado:
+            _limpiar_reset(request)
+            error = 'El código expiró. Pedí uno nuevo.'
+        elif intentos >= 5:
+            _limpiar_reset(request)
+            error = 'Demasiados intentos. Pedí un código nuevo.'
+        elif ingresado != guardado:
+            request.session['reset_intentos'] = intentos + 1
+            error = f'Código incorrecto. Te quedan {4 - intentos} intentos.'
+        else:
+            request.session['reset_verificado'] = True
+            return redirect('recuperar_nueva_clave')
+
+    return render(request, 'app_principa/recuperar_verificar.html', {'error': error})
+
+import re
+
+def recuperar_nueva_clave(request):
+    """Paso 3: cambiar la contraseña (solo si se verificó el código)."""
+    if not request.session.get('reset_verificado'):
+        return redirect('recuperarContraseña')
+
+    error = None
+    if request.method == 'POST':
+        password = request.POST.get('password') or ''
+        password2 = request.POST.get('password2') or ''
+
+        # Misma regla que el pattern del input
+        regla = r'^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$'
+        if not re.match(regla, password):
+            error = 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.'
+        elif password != password2:
+            error = 'Las contraseñas no coinciden.'
+        else:
+            usuario_id = request.session.get('reset_usuario_id')
+            usuario = Usuario.objects.filter(id=usuario_id).first()
+            _limpiar_reset(request)
+            if usuario:
+                usuario.contrasenia = password
+                usuario.save(update_fields=['contrasenia'])
+                messages.success(request, 'Contraseña actualizada. Ya podés iniciar sesión.')
+                return redirect('login')
+            return redirect('recuperarContraseña')
+
+    return render(request, 'app_principa/recuperar_nueva_clave.html', {'error': error})
 
 # ---------- Roles ----------
 
@@ -50,6 +159,7 @@ def registro(request):
         nombre = request.POST.get('nombre')
         usuario = request.POST.get('usuario')
         contrasenia = request.POST.get('password')
+        email = request.POST.get('email')
         # Opcionales: solo se guardan si registro.html tiene esos inputs
         direccion = (request.POST.get('direccion') or '').strip()
         telefono = (request.POST.get('telefono') or '').strip()
@@ -57,6 +167,7 @@ def registro(request):
             Usuario.objects.create(
                 nombre=nombre,
                 usuario=usuario,
+                email = email,
                 contrasenia=contrasenia,
                 direccion=direccion,
                 telefono=telefono,
@@ -74,6 +185,18 @@ def seleccion(request):
 def TpBANFIELD(request):
     return render(request, 'app_principa/TpBANFIELD.html')
 
+# def recuperacion(request):
+#     error = None
+#     if request.method == 'POST':
+#         email_ingresado = request.POST.get('email')
+#         try:
+#             usuario_a_recuperar = Usuario.objects.filter(email = email_ingresado)
+#             id_usuario_usuario_a_recuperar = usuario_a_recuperar.id
+#             usuario_a_recuperar.update(contrasenia = )
+#         except Usuario.DoesNotExist: 
+#             error = 'El email que ingreso no esta registrado'
+#             render 
+#     return render(request, 'app_principa/recuperar_cuenta.html', {'error': error})
 
 def login_view(request):
     error = None
